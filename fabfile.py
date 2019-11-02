@@ -12,8 +12,6 @@ from fabric import task
 from fabric import Connection, Config
 from invoke import Responder
 
-from tqdm import tqdm
-
 import os
 
 user_config = PassPhrase('./passphrase.toml')
@@ -48,8 +46,7 @@ def remove_user(c):
 
 @task
 def clean_host(c):
-    for host, hostname in tqdm(zip(config.server.hosts, config.server.hostnames), total=len(config.server.hosts),
-                               desc='clean-host'):
+    for host, hostname in zip(config.server.hosts, config.server.hostnames):
         sudo_conn.sudo("sed -i '/{}\s*{}/d' /etc/hosts".format(host, hostname), pty=True, hide='stderr')
 
 
