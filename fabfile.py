@@ -146,25 +146,30 @@ def set_ntp(c):
 def install_hadoop(c):
     hadoop_source = os.path.join('/home', config.server.username, 'hadoop.tar.gz')
     hadoop_path = os.path.join('/home', config.server.username, config.server.hadoop_path)
+
+    print('put hadoop...')
+    conn.put(config.server.hadoop_source, hadoop_source)
+    print('install hadoop...')
+    conn.run("tar -zxf {}".format(hadoop_source), pty=True)
+    print('configure bashrc...')
+    conn.run("echo 'export HADOOP_HOME={}'>>~/.bashrc".format(hadoop_path), pty=True)
+    conn.run("echo 'export PATH=$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH'>>~/.bashrc", pty=True)
+    # clean
+    print('clean...')
+    conn.run("rm {}".format(hadoop_source), pty=True)
+
+
+@task
+def configure_hadoop(c):
+    hadoop_path = os.path.join('/home', config.server.username, config.server.hadoop_path)
     hadoop_config_path = os.path.join(hadoop_path, 'etc/hadoop')
     local_config_path = './files/hadoop'
-
-    # print('put hadoop...')
-    # conn.put(config.server.hadoop_source, hadoop_source)
-    # print('install hadoop...')
-    # conn.run("tar -zxf {}".format(hadoop_source), pty=True)
-    # print('configure bashrc...')
-    # conn.run("echo 'export HADOOP_HOME={}'>>~/.bashrc".format(hadoop_path), pty=True)
-    # conn.run("echo 'export PATH=$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH'>>~/.bashrc", pty=True)
-    # # clean
-    # print('clean...')
-    # conn.run("rm {}".format(hadoop_source), pty=True)
-    # print('configure hadoop-env.sh')
-    # jdk_path = os.path.join('/home', config.server.username, config.server.jdk_path)
-    # hadoop_env_path = os.path.join(hadoop_config_path, 'hadoop-env.sh')
-    # jdk_cmd = "sed -i 's/.*export JAVA_HOME=.*/export JAVA_HOME={}/g' {}".format(jdk_path.replace("/", "\\/"),
-    #                                                                              hadoop_env_path)
-    # conn.run(jdk_cmd)
+    print('configure hadoop-env.sh')
+    jdk_path = os.path.join('/home', config.server.username, config.server.jdk_path)
+    hadoop_env_path = os.path.join(hadoop_config_path, 'hadoop-env.sh')
+    jdk_cmd = "sed -i 's/.*export JAVA_HOME=.*/export JAVA_HOME={}/g' {}".format(jdk_path.replace("/", "\\/"),
+                                                                                 hadoop_env_path)
+    conn.run(jdk_cmd)
 
     print('configure hadoop/workers & master')
     worker_info = '\n'.join(config.hadoop_hostname)
@@ -201,16 +206,19 @@ def install_hadoop(c):
 
 
 master = Connection(config.hadoop_master, config=init_config)
+spark_master = Connection(config.spark.master, config=init_config)
 
 @task
 def format_hadoop(c):
     master.run('hdfs namenode -format')
+
 
 @task
 def chown(c):
     sudo_conn.sudo("sed -i '/.*\/data/d' /etc/rc.local", pty=True, hide='stderr')
     sudo_conn.sudo('''sh -c "echo 'sudo chown -R test:test /data' >> /etc/rc.local"''', pty=True)
     sudo_conn.sudo("sudo chown -R test:test /data", pty=True, warn=True)
+
 
 @task
 def start_hadoop(c):
@@ -226,7 +234,47 @@ def stop_hadoop(c):
 
 @task
 def install_spark(c):
-    pass
+    spark_source = os.path.join('/home', config.server.username, 'spark.tar.gz')
+    spark_path = os.path.join('/home', config.server.username, config.server.spark_path)
+    print('put spark...')
+    conn.put(config.server.spark_source, spark_source)
+    print('install spark...')
+    conn.run("tar -zxf {}".format(spark_source), pty=True)
+    print('configure bashrc...')
+    conn.run("echo 'export SPARK_HOME={}'>>~/.bashrc".format(spark_path), pty=True)
+    conn.run("echo 'export PATH=SPARK_HOME/bin:SPARK_HOME/sbin:$PATH'>>~/.bashrc", pty=True)
+    # clean
+    print('clean...')
+    conn.run("rm {}".format(spark_source), pty=True)
+
+
+@task
+def configure_spark(c):
+    spark_path = os.path.join('/home', config.server.username, config.server.spark_path)
+    spark_config_path = os.path.join(spark_path, 'conf')
+    env_path = os.path.join(spark_config_path, 'spark-env.sh')
+    print('configure spark-env.sh')
+    conn.run("echo 'SPARK_MASTER_PORT={}' > {}".format(config.spark.port, env_path))
+    conn.run("echo 'SPARK_MASTER_HOST={}' >> {}".format(config.spark.master, env_path))
+    conn.run("echo 'SPARK_HOME={}' >> {}".format(spark_path, env_path))
+    jdk_path = os.path.join('/home', config.server.username, config.server.jdk_path)
+    conn.run("echo 'JAVA_HOME={}' >> {}".format(jdk_path, env_path))
+
+    print('configure spark slaves')
+    worker_info = '\n'.join(config.spark.spark_hostnames)
+    conn.run("echo '{}' > {}/slaves".format(worker_info, spark_config_path))
+
+@task
+def start_spark(c):
+    spark_path = os.path.join('/home', config.server.username, config.server.spark_path)
+    spark_master.run("{}/sbin/start-all.sh".format(spark_path))
+
+
+@task
+def stop_spark(c):
+    spark_path = os.path.join('/home', config.server.username, config.server.spark_path)
+    spark_master.run("{}/sbin/stop-all.sh".format(spark_path))
+    spark_master.run("{}/sbin/stop-master.sh".format(spark_path))
 
 
 @task

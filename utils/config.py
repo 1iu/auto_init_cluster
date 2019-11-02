@@ -32,6 +32,17 @@ class ClusterServer:
             setattr(self, k, config_dict[k])
 
 
+class SparkServer:
+
+    def __init__(self, config_dict):
+        self.master = ''
+        self.port = ''
+        self.spark_hosts = []
+        self.spark_hostnames = []
+        for k in config_dict:
+            setattr(self, k, config_dict[k])
+
+
 class ClusterConfig:
 
     def __init__(self, path):
@@ -46,6 +57,7 @@ class ClusterConfig:
         self.hadoop_tmp_folder = self.config['hadoop']['tmp_folder']
         self.hadoop_data_folder = self.config['hadoop']['data_folder']
         self.hadoop_master = self.config['hadoop']['master']
+        self.spark = SparkServer(self.config['spark'])
 
 
 class PassPhrase:
