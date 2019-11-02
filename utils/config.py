@@ -12,6 +12,26 @@ import os
 import logging
 
 
+class ClusterServer:
+
+    def __init__(self, config_dict):
+        self.username = ''
+        self.password = ''
+        self.hosts = []
+        self.hostnames = []
+        self.jdk_source = ''
+        self.jdk_path = ''
+        self.hadoop_source = ''
+        self.hadoop_path = ''
+        self.scala_source = ''
+        self.scala_path = ''
+        self.spark_source = ''
+        self.spark_path = ''
+        self.ntp_server = ''
+        for k in config_dict:
+            setattr(self, k, config_dict[k])
+
+
 class ClusterConfig:
 
     def __init__(self, path):
@@ -20,16 +40,9 @@ class ClusterConfig:
             self.logger.error('no config in path: %s', path)
             raise FileNotFoundError
         self.config = toml.load(open(path, encoding='utf-8'))
-
-    def get(self, k):
-        if k in self.config:
-            return self.config[k]
-        else:
-            self.logger.warning('no config with key: %s', k)
-            return
-
-    def set(self, k, v):
-        self.config[k] = v
+        self.server = ClusterServer(self.config['server'])
+        self.hadoop = self.config['cluster']['hadoop_hosts']
+        self.hadoop_hostname = self.config['cluster']['hadoop_hostnames']
 
 
 class PassPhrase:
