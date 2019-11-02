@@ -41,8 +41,11 @@ class ClusterConfig:
             raise FileNotFoundError
         self.config = toml.load(open(path, encoding='utf-8'))
         self.server = ClusterServer(self.config['server'])
-        self.hadoop = self.config['cluster']['hadoop_hosts']
-        self.hadoop_hostname = self.config['cluster']['hadoop_hostnames']
+        self.hadoop = self.config['hadoop']['hadoop_hosts']
+        self.hadoop_hostname = self.config['hadoop']['hadoop_hostnames']
+        self.hadoop_tmp_folder = self.config['hadoop']['tmp_folder']
+        self.hadoop_data_folder = self.config['hadoop']['data_folder']
+        self.hadoop_master = self.config['hadoop']['master']
 
 
 class PassPhrase:

@@ -76,7 +76,7 @@ def add_key(c):
     auth_key_path = os.path.join('files', 'authorized_keys')
     print('get id_rsa.pub')
     with open(auth_key_path, 'wb') as key_file:
-        conn.get(os.path.join('/home', config.server.username,'.ssh/id_rsa.pub'), key_file)
+        conn.get(os.path.join('/home', config.server.username, '.ssh/id_rsa.pub'), key_file)
     print('write authorized_keys')
     with open(auth_key_path, 'r') as key_file:
         keys = key_file.read()
@@ -141,28 +141,87 @@ def set_ntp(c):
 
     ntp_conn.sudo('rm -f /etc/cron.daily/myntp', pty=True, warn=True)
 
+
 @task
 def install_hadoop(c):
     hadoop_source = os.path.join('/home', config.server.username, 'hadoop.tar.gz')
     hadoop_path = os.path.join('/home', config.server.username, config.server.hadoop_path)
     hadoop_config_path = os.path.join(hadoop_path, 'etc/hadoop')
-    print('put hadoop...')
-    conn.put(config.server.hadoop_source, hadoop_source)
-    print('install hadoop...')
-    conn.run("tar -zxf {}".format(hadoop_source), pty=True)
-    print('configure bashrc...')
-    conn.run("echo 'export HADOOP_HOME={}'>>~/.bashrc".format(hadoop_path), pty=True)
-    conn.run("echo 'export PATH=$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH'>>~/.bashrc", pty=True)
-    # clean
-    print('clean...')
-    conn.run("rm {}".format(hadoop_source), pty=True)
+    local_config_path = './files/hadoop'
 
-    print('configure hadoop/workers')
-    conn.run("cat /dev/null > {}/workers".format(hadoop_config_path))
-    for node in config.hadoop_hostname:
-        conn.run("echo {} >> {}/workers".format(node, hadoop_config_path))
+    # print('put hadoop...')
+    # conn.put(config.server.hadoop_source, hadoop_source)
+    # print('install hadoop...')
+    # conn.run("tar -zxf {}".format(hadoop_source), pty=True)
+    # print('configure bashrc...')
+    # conn.run("echo 'export HADOOP_HOME={}'>>~/.bashrc".format(hadoop_path), pty=True)
+    # conn.run("echo 'export PATH=$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH'>>~/.bashrc", pty=True)
+    # # clean
+    # print('clean...')
+    # conn.run("rm {}".format(hadoop_source), pty=True)
+    # print('configure hadoop-env.sh')
+    # jdk_path = os.path.join('/home', config.server.username, config.server.jdk_path)
+    # hadoop_env_path = os.path.join(hadoop_config_path, 'hadoop-env.sh')
+    # jdk_cmd = "sed -i 's/.*export JAVA_HOME=.*/export JAVA_HOME={}/g' {}".format(jdk_path.replace("/", "\\/"),
+    #                                                                              hadoop_env_path)
+    # conn.run(jdk_cmd)
+
+    print('configure hadoop/workers & master')
+    worker_info = '\n'.join(config.hadoop_hostname)
+    conn.run("echo '{}' > {}/workers".format(worker_info, hadoop_config_path))
+    conn.run("echo '{}' > {}/master".format(config.hadoop_master, hadoop_config_path))
+
+    print('configure hadoop/core-site.xml')
+    conn.put(os.path.join(local_config_path, 'core-site.xml'), hadoop_config_path)
+    core_path = os.path.join(hadoop_config_path, 'core-site.xml')
+    tmp_path = os.path.join(hadoop_path, config.hadoop_tmp_folder)
+    tmp_dir_cmd = "sed -i 's/TEMP_DIR/{}/g' {}".format(tmp_path.replace("/", "\\/"), core_path)
+    conn.run(tmp_dir_cmd)
+    modeify_ip = "sed -i 's/MASTERIP/{}/g' {}".format(config.hadoop_master, core_path)
+    conn.run(modeify_ip)
+
+    print('configure hadoop/hdfs-site.xml')
+    conn.put(os.path.join(local_config_path, 'hdfs-site.xml'), hadoop_config_path)
+    hdfs_path = os.path.join(hadoop_config_path, 'hdfs-site.xml')
+    data_dir = config.hadoop_data_folder
+    data_dir_cmd = "sed -i 's/DATA_DIR/{}/g' {}".format(data_dir.replace("/", "\\/"), hdfs_path)
+    conn.run(data_dir_cmd)
+
+    print('configure hadoop/yarn-site.xml')
+    yarn_path = os.path.join(hadoop_config_path, 'yarn-site.xml')
+    conn.put(os.path.join(local_config_path, 'yarn-site.xml'), hadoop_config_path)
+    modeify_ip = "sed -i 's/MASTERIP/{}/g' {}".format(config.hadoop_master, yarn_path)
+    conn.run(modeify_ip)
+
+    print('configure hadoop/mapred-site.xml')
+    mapred_path = os.path.join(hadoop_config_path, 'mapred-site.xml')
+    conn.put(os.path.join(local_config_path, 'mapred-site.xml'), hadoop_config_path)
+    modeify_ip = "sed -i 's/MASTERIP/{}/g' {}".format(config.hadoop_master, mapred_path)
+    conn.run(modeify_ip)
 
 
+master = Connection(config.hadoop_master, config=init_config)
+
+@task
+def format_hadoop(c):
+    master.run('hdfs namenode -format')
+
+@task
+def chown(c):
+    sudo_conn.sudo("sed -i '/.*\/data/d' /etc/rc.local", pty=True, hide='stderr')
+    sudo_conn.sudo('''sh -c "echo 'sudo chown -R test:test /data' >> /etc/rc.local"''', pty=True)
+    sudo_conn.sudo("sudo chown -R test:test /data", pty=True, warn=True)
+
+@task
+def start_hadoop(c):
+    master.run('start-dfs.sh')
+    master.run('start-yarn.sh')
+
+
+@task
+def stop_hadoop(c):
+    master.run('stop-dfs.sh')
+    master.run('stop-yarn.sh')
 
 
 @task

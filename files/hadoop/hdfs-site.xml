@@ -1,0 +1,11 @@
+<configuration>
+    <property>
+        <name>dfs.replication</name>
+        <value>8</value>
+    </property>
+    <property>
+        <name>dfs.data.dir</name>
+        <value>file://DATA_DIR</value>
+        <description/>
+    </property>
+</configuration>

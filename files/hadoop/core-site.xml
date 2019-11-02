@@ -1,10 +1,10 @@
 <configuration>
     <property>
-        <name>fs.default.name</name>
-        <value>hdfs://Master:20000</value>
+        <name>fs.defaultFS</name>
+        <value>hdfs://MASTERIP:20000</value>
     </property>
     <property>
         <name>hadoop.tmp.dir</name>
-        <value>/tmp/hadoop-${user.name}</value>
+        <value>TEMP_DIR</value>
     </property>
 </configuration>
