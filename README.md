@@ -1,6 +1,12 @@
 # Auto Init Cluster
 This project helps users automatically initialize new clusters to deploy [Hadoop](https://hadoop.apache.org/) 
-and [Spark](https://spark.apache.org/). (Now for CentOS 7)
+and [Spark](https://spark.apache.org/), from `tar` to `hdfs` or `spark-submit`.
+
+自动初始化部署Hadoop和Spark集群，从软件的压缩包开始一键部署，获得可以直接使用的命令/接口。
+
+*Now for CentOS 7.*
+
+*现在仅在CentOS 7上进行了测试。*
 
 ## Requirements
 * fabric==2.5.0
