@@ -215,9 +215,11 @@ def format_hadoop(c):
 
 @task
 def chown(c):
+    user = config.server.username
+    group = config.server.username
     sudo_conn.sudo("sed -i '/.*\/data/d' /etc/rc.local", pty=True, hide='stderr')
-    sudo_conn.sudo('''sh -c "echo 'sudo chown -R test:test /data' >> /etc/rc.local"''', pty=True)
-    sudo_conn.sudo("sudo chown -R test:test /data", pty=True, warn=True)
+    sudo_conn.sudo('''sh -c "echo 'sudo chown -R {}:{} /data' >> /etc/rc.local"'''.format(user, group), pty=True)
+    sudo_conn.sudo("sudo chown -R {}:{} /data".format(user, group), pty=True, warn=True)
 
 
 @task
@@ -259,6 +261,10 @@ def configure_spark(c):
     conn.run("echo 'SPARK_HOME={}' >> {}".format(spark_path, env_path))
     jdk_path = os.path.join('/home', config.server.username, config.server.jdk_path)
     conn.run("echo 'JAVA_HOME={}' >> {}".format(jdk_path, env_path))
+    spark_master_opts = '"-Dspark.deploy.defaultCores={}"'.format(config.spark.default_cores)
+    conn.run("echo 'SPARK_MASTER_OPTS={}' >> {}".format(spark_master_opts, env_path))
+    spark_worker_opts = '"-Dspark.worker.cleanup.enabled=true -Dspark.worker.cleanup.interval=3600"'
+    conn.run("echo 'SPARK_WORKER_OPTS={}' >> {}".format(spark_worker_opts, env_path))
 
     print('configure spark slaves')
     worker_info = '\n'.join(config.spark.spark_hostnames)
@@ -275,9 +281,3 @@ def stop_spark(c):
     spark_path = os.path.join('/home', config.server.username, config.server.spark_path)
     spark_master.run("{}/sbin/stop-all.sh".format(spark_path))
     spark_master.run("{}/sbin/stop-master.sh".format(spark_path))
-
-
-@task
-def whoami(c):
-    conn.run('whoami')
-    conn.sudo('whoami', hide='stderr')

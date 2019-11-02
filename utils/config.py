@@ -39,6 +39,7 @@ class SparkServer:
         self.port = ''
         self.spark_hosts = []
         self.spark_hostnames = []
+        self.default_cores = -1
         for k in config_dict:
             setattr(self, k, config_dict[k])
 
