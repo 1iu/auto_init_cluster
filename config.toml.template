@@ -21,6 +21,7 @@ hadoop_hostnames = ['Slave1']
 tmp_folder = 'tmp'
 data_folder = '/data'
 master = '192.168.0.1'
+port = 20000
 
 [spark]
 master = '192.168.0.1'

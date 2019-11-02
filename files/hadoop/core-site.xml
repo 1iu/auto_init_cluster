@@ -1,7 +1,7 @@
 <configuration>
     <property>
         <name>fs.defaultFS</name>
-        <value>hdfs://MASTERIP:20000</value>
+        <value>hdfs://MASTERIP:MASTERPORT</value>
     </property>
     <property>
         <name>hadoop.tmp.dir</name>

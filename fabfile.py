@@ -169,41 +169,44 @@ def configure_hadoop(c):
     conn.run(jdk_cmd)
 
     print('configure hadoop/workers & master')
-    worker_info = '\n'.join(config.hadoop_hostname)
+    worker_info = '\n'.join(config.hadoop.hadoop_hostnames)
     conn.run("echo '{}' > {}/workers".format(worker_info, hadoop_config_path))
-    conn.run("echo '{}' > {}/master".format(config.hadoop_master, hadoop_config_path))
+    conn.run("echo '{}' > {}/master".format(config.hadoop.master, hadoop_config_path))
 
     print('configure hadoop/core-site.xml')
     conn.put(os.path.join(local_config_path, 'core-site.xml'), hadoop_config_path)
     core_path = os.path.join(hadoop_config_path, 'core-site.xml')
-    tmp_path = os.path.join(hadoop_path, config.hadoop_tmp_folder)
+    tmp_path = os.path.join(hadoop_path, config.hadoop.tmp_folder)
     tmp_dir_cmd = "sed -i 's/TEMP_DIR/{}/g' {}".format(tmp_path.replace("/", "\\/"), core_path)
     conn.run(tmp_dir_cmd)
-    modeify_ip = "sed -i 's/MASTERIP/{}/g' {}".format(config.hadoop_master, core_path)
+    modeify_ip = "sed -i 's/MASTERIP/{}/g' {}".format(config.hadoop.master, core_path)
     conn.run(modeify_ip)
+    modeify_port = "sed -i 's/MASTERPORT/{}/g' {}".format(config.hadoop.port, core_path)
+    conn.run(modeify_port)
 
     print('configure hadoop/hdfs-site.xml')
     conn.put(os.path.join(local_config_path, 'hdfs-site.xml'), hadoop_config_path)
     hdfs_path = os.path.join(hadoop_config_path, 'hdfs-site.xml')
-    data_dir = config.hadoop_data_folder
+    data_dir = config.hadoop.data_folder
     data_dir_cmd = "sed -i 's/DATA_DIR/{}/g' {}".format(data_dir.replace("/", "\\/"), hdfs_path)
     conn.run(data_dir_cmd)
 
     print('configure hadoop/yarn-site.xml')
     yarn_path = os.path.join(hadoop_config_path, 'yarn-site.xml')
     conn.put(os.path.join(local_config_path, 'yarn-site.xml'), hadoop_config_path)
-    modeify_ip = "sed -i 's/MASTERIP/{}/g' {}".format(config.hadoop_master, yarn_path)
+    modeify_ip = "sed -i 's/MASTERIP/{}/g' {}".format(config.hadoop.master, yarn_path)
     conn.run(modeify_ip)
 
     print('configure hadoop/mapred-site.xml')
     mapred_path = os.path.join(hadoop_config_path, 'mapred-site.xml')
     conn.put(os.path.join(local_config_path, 'mapred-site.xml'), hadoop_config_path)
-    modeify_ip = "sed -i 's/MASTERIP/{}/g' {}".format(config.hadoop_master, mapred_path)
+    modeify_ip = "sed -i 's/MASTERIP/{}/g' {}".format(config.hadoop.master, mapred_path)
     conn.run(modeify_ip)
 
 
-master = Connection(config.hadoop_master, config=init_config)
+master = Connection(config.hadoop.master, config=init_config)
 spark_master = Connection(config.spark.master, config=init_config)
+
 
 @task
 def format_hadoop(c):
@@ -267,6 +270,7 @@ def configure_spark(c):
     worker_info = '\n'.join(config.spark.spark_hostnames)
     conn.run("echo '{}' > {}/slaves".format(worker_info, spark_config_path))
 
+
 @task
 def start_spark(c):
     spark_path = os.path.join('/home', config.server.username, config.server.spark_path)
@@ -278,3 +282,27 @@ def stop_spark(c):
     spark_path = os.path.join('/home', config.server.username, config.server.spark_path)
     spark_master.run("{}/sbin/stop-all.sh".format(spark_path))
     spark_master.run("{}/sbin/stop-master.sh".format(spark_path))
+
+
+@task
+def install_anaconda(c):
+    anaconda_source = os.path.join('/home', config.server.username, 'anaconda.sh')
+    print('put anaconda...')
+    # conn.put('files/Anaconda3-2018.12-Linux-x86_64.sh', anaconda_source)
+    print('install anaconda...')
+    conn.run("chmod +x {}".format(anaconda_source))
+    conn.run(anaconda_source)
+
+
+@task
+def remove_anaconda(c):
+    anaconda_source = os.path.join('/home', config.server.username, 'anaconda.sh')
+    print('clean anaconda...')
+    conn.run("rm {}".format(anaconda_source), warn=True)
+
+
+@task
+def update_repo(c):
+    sudo_conn.sudo('mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak', pty=True, warn=True)
+    sudo_conn.put('files/CentOS-Base.repo', 'CentOS-Base.repo')
+    sudo_conn.sudo('mv CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo', pty=True)
