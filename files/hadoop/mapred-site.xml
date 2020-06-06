@@ -12,4 +12,10 @@
         <name>mapreduce.jobhistory.webapp.address</name>
         <value>MASTERIP:19888</value>
     </property>
+    <property>
+        <name>mapreduce.application.classpath</name>
+        <value>
+            HADOOPHOME/etc/hadoop:HADOOPHOME/share/hadoop/common/lib/*:HADOOPHOME/share/hadoop/common/*:HADOOPHOME/share/hadoop/hdfs:HADOOPHOME/share/hadoop/hdfs/lib/*:HADOOPHOME/share/hadoop/hdfs/*:HADOOPHOME/share/hadoop/mapreduce/lib/*:HADOOPHOME/share/hadoop/mapreduce/*:HADOOPHOME/share/hadoop/yarn:HADOOPHOME/share/hadoop/yarn/lib/*:HADOOPHOME/share/hadoop/yarn/*
+        </value>
+    </property>
 </configuration>

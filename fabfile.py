@@ -13,6 +13,7 @@ from fabric import Connection, Config
 from invoke import Responder
 
 import os
+import re
 
 user_config = PassPhrase('./passphrase.toml')
 config = ClusterConfig('./config.toml')
@@ -179,10 +180,10 @@ def configure_hadoop(c):
     tmp_path = os.path.join(hadoop_path, config.hadoop.tmp_folder)
     tmp_dir_cmd = "sed -i 's/TEMP_DIR/{}/g' {}".format(tmp_path.replace("/", "\\/"), core_path)
     conn.run(tmp_dir_cmd)
-    modeify_ip = "sed -i 's/MASTERIP/{}/g' {}".format(config.hadoop.master, core_path)
-    conn.run(modeify_ip)
-    modeify_port = "sed -i 's/MASTERPORT/{}/g' {}".format(config.hadoop.port, core_path)
-    conn.run(modeify_port)
+    modify_ip = "sed -i 's/MASTERIP/{}/g' {}".format(config.hadoop.master, core_path)
+    conn.run(modify_ip)
+    modify_port = "sed -i 's/MASTERPORT/{}/g' {}".format(config.hadoop.port, core_path)
+    conn.run(modify_port)
 
     print('configure hadoop/hdfs-site.xml')
     conn.put(os.path.join(local_config_path, 'hdfs-site.xml'), hadoop_config_path)
@@ -194,14 +195,16 @@ def configure_hadoop(c):
     print('configure hadoop/yarn-site.xml')
     yarn_path = os.path.join(hadoop_config_path, 'yarn-site.xml')
     conn.put(os.path.join(local_config_path, 'yarn-site.xml'), hadoop_config_path)
-    modeify_ip = "sed -i 's/MASTERIP/{}/g' {}".format(config.hadoop.master, yarn_path)
-    conn.run(modeify_ip)
+    modify_ip = "sed -i 's/MASTERIP/{}/g' {}".format(config.hadoop.master, yarn_path)
+    conn.run(modify_ip)
 
     print('configure hadoop/mapred-site.xml')
     mapred_path = os.path.join(hadoop_config_path, 'mapred-site.xml')
     conn.put(os.path.join(local_config_path, 'mapred-site.xml'), hadoop_config_path)
-    modeify_ip = "sed -i 's/MASTERIP/{}/g' {}".format(config.hadoop.master, mapred_path)
-    conn.run(modeify_ip)
+    modify_ip = "sed -i 's/MASTERIP/{}/g' {}".format(config.hadoop.master, mapred_path)
+    conn.run(modify_ip)
+    modify_hadoop = "sed -i 's/HADOOPHOME/{}/g' {}".format(hadoop_path.replace("/", "\\/"), mapred_path)
+    conn.run(modify_hadoop)
 
 
 master = Connection(config.hadoop.master, config=init_config)
@@ -244,7 +247,7 @@ def install_spark(c):
     conn.run("tar -zxf {}".format(spark_source), pty=True)
     print('configure bashrc...')
     conn.run("echo 'export SPARK_HOME={}'>>~/.bashrc".format(spark_path), pty=True)
-    conn.run("echo 'export PATH=SPARK_HOME/bin:SPARK_HOME/sbin:$PATH'>>~/.bashrc", pty=True)
+    conn.run("echo 'export PATH=$SPARK_HOME/bin:$SPARK_HOME/sbin:$PATH'>>~/.bashrc", pty=True)
     # clean
     print('clean...')
     conn.run("rm {}".format(spark_source), pty=True)
@@ -306,3 +309,10 @@ def update_repo(c):
     sudo_conn.sudo('mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak', pty=True, warn=True)
     sudo_conn.put('files/CentOS-Base.repo', 'CentOS-Base.repo')
     sudo_conn.sudo('mv CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo', pty=True)
+
+@task
+def configure_pip(c):
+    scala_source = os.path.join('/home', config.server.username, '.config/pip/pip.conf')
+    conn.run('mkdir ~/.config/pip')
+    conn.put('files/pip.conf', scala_source)
+
